@@ -1,33 +1,24 @@
-#' Estimation of ego-Temporal Exponential Random Graph Model (ego-TERGM) using Expectation Maximization (EM).
+#' Stability validation of ego-Temporal Exponential Random Graph Model (ego-TERGM) fit.
 #'
-#' This function estimates an ego-TERGM on a longitudinally observed network.  Currently the function does not support comparisons of whole networks.
-#' @param net The longitudinally observed network that an ego-TERGM will be fit on.  Must be presented as a list of networks.  Any vertex attributes should be attached to networks.  Currently the function does not support comparisons of whole networks.
-#' @param core_size The order of alters to include. The default value of one implies only looking at an ego's alters and the connections among them.
-#' @param min_size  The minimum number of nodes an ego-network must achieve to be included.  Defaults to five.
-#' @param roles The number of roles that should be fit.  Defaults to 3.
-#' @param form The formula comprised of ERGM or TERGM terms used to distinguish between clusters assignments.  Specified as a vector of comma separated terms. No default.
-#' @param add_drop Do nodes drop out of the network or enter it? If so, specify as the default TRUE.
-#' @param directed Should the longitudinal network be treated as directed? If so, specify as the default TRUE.
-#' @param edge_covariates Are edge covariates included in the form term? IF so, specify as TRUE.  No default.  These should be stored as network attributes.
+#' This function examines the stability of ego-TERGM results to the pooling window.  It takes some proportion of the window's network and compares the result of a model fit on these time periods to the original fit.
+#' @param ego_tergm_fit The output of a previously fit ego-TERGM fit using the ego_tergm function.  This is the model that stability validation will be performed on.
+#' @param splitting_probability A value from 0 to 1 that determines the probability that any given network is assigned to the comparison group.
 #' @param seed The seed set to replicate analysis for pseudorandom number generator.
 #' @param R The number of bootstrap replications that should be used for the estimation of a bootstrapped MPLE estimated TERGM for model initialization.  Defaults to 10.
 #' @param forking If parallelization via forking should be used (TRUE) or if no parallel processing should be used (FALSE).  Currently, sockets are not supported.
 #' @param ncpus The number of CPUs that should should be used for estimation, defaults to 1.
 #' @param steps The number of default EM steps that should be taken, defaults to 50.
 #' @param tol The difference in parameter estimates between EM iterations to determine if the algorithm has converged.  Defaults to 1e-6.
-#' @return A list of model results and input values, including net (original networks), lambda (the probability of assignments), group.theta (the roles by terms cluster centroids),
-#'         EE.BIC (the Salter-Townshend and Murphy BIC cross-sectional BIC), TS.BIC (the Campbell BIC penalizing for time-steps),
-#'        role_assignments (a data frame of the most likely assignments), reduced_networks (A list of the networks with excluded egos),
-#'        ego_nets (a list of ego-networks), and ego_nets_used (N x T matrix of logicals here TRUE refers to ego-networks kept).
-#' @keywords ego-TERGM
+#' @return Returns comparison_table (a matrix of cross-tabulation results to compare common cluster assignments or if incompatible a table of relative proportions sorted by value to allow for comparisons under set incompatibility and label switching), networks_sampled (which networks were included in the new validation sample),
+#'         comparison_lambda (the matrix of role assignments for validation networks), comparison_group.theta (centroids for validation networks),
+#'         comparison_EE.BIC (Salter-Townshend and Murphy BIC that doesn't penalize for longitudinal networks for validation networks),
+#'         comparison_TS.BIC (BIC that penalizes for longitudinal networks for validation networks), comparison_role_assignments (role assignments for validation networks),
+#'         and comparison_ego_nets (validation ego-networks).  Note that labels may switch.
+#' @keywords ego-TERGM validation
 #' @references{
 #'  Campbell, Benjamin W. (2018):
 #'  Inferring Latent Roles in Longitudinal Networks.
 #'  \emph{Political Analysis} 26(3): 292-311.  \url{https://doi.org/10.1017/pan.2018.20}
-#'
-#'  Leifeld, Philip, Skyler J. Cranmer and Bruce A. Desmarais (2017):
-#'  Temporal Exponential Random Graph Models with btergm: Estimation and Bootstrap Confidence Intervals.
-#'   \emph{Journal of Statistical Software} 83(6): 1-36. \url{http://dx.doi.org/10.18637/jss.v083.i06}
 #' }
 #' @examples
 #' \donttest{
@@ -80,122 +71,136 @@
 #'                           ncpus = 1,
 #'                           steps = 50,
 #'                           tol = 1e-06)
+#'
+#' stability_check <- stability_validation(ego_tergm_fit = ego_tergm_fit, seed = 614)
+#' print(stability_check$comparison_table)
 #' }
 #' @export
-
-ego_tergm <- function(net = NULL,
-                      form = NULL,
-                      core_size = 1, min_size = 5, roles = 3, add_drop = TRUE, directed = TRUE, edge_covariates = FALSE,
-                      seed = 12345,
-                      R = 10, forking = FALSE, ncpus = 1,
-                      steps = 50, tol = 1e-6){
+#'
+stability_validation <- function(ego_tergm_fit = NULL,
+                                 splitting_probability = 0.5,
+                                 seed = 12345,
+                                 R = 10, forking = FALSE, ncpus = 1,
+                                 steps = 50, tol = 1e-6){
   cat("Start Time:", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-  if (min_size<=1){
-    stop("Minimum size must be greater than 1.  Please adjust the min_size argument to a value greater than 1.")
+
+  if(!is.null(seed)){
+    set.seed(seed)
   }
+
+  # create the random sample to fit a new ego-TERGM to:
+  # First, create a set of indices to sample
+  sample_indices <- rbinom(n = length(ego_tergm_fit$net), size = 1, prob = splitting_probability)
+  if(sum(sample_indices) == 0 | sum(sample_indices) == length(sample_indices)){
+    stop("Either no networks are resampled, or all networks are resampled.  Please either change the seed or or modify the splitting probability.")
+  }
+
+  # Second, create the subset
+  subset_networks <- ego_tergm_fit$net[which(sample_indices == 1)]
+
+  net <- subset_networks
+  orig_nets <- subset_networks
+  time_steps <- length(net)
 
   cat("Data formatting started.", "\n")
   # tested prior to 9/3/17
-  # save the original networks so that they can be returned later
-  orig_nets <- net
 
+  N <-  max(unlist(lapply(net, function(x) network::network.size(x))))
+
+  core_size = ego_tergm_fit$core_size
+  min_size = ego_tergm_fit$min_size
+  roles = ego_tergm_fit$roles
+  add_drop = ego_tergm_fit$add_drop
+  directed = ego_tergm_fit$directed
+  edge_covariates = ego_tergm_fit$edge_covariates
+  form = ego_tergm_fit$form
+
+  if (min_size<=1){
+    stop("Minimum size must be greater than 1.  Please adjust the min_size argument to a value greater than 1.")
+  }
   ########################################################################
   ### Start Functions
   ###  (for network prep)
   ########################################################################
-  # calculate the number of time steps or networks in the broader longitudinal network
-  time_steps <- length(net)
 
   # extract the all vertices never appearing in a particular network but some network and add them as isolates
   if(add_drop==TRUE){
-    # get all of the vertices that ever appear in the longitudinal network
-    if(forking == TRUE){
-      vertices <- unique(unlist(parallel::mclapply(net, function(x) network::get.vertex.attribute(x, 'vertex.names'), mc.cores = ncpus)))
-    } else {
-      vertices <- unique(unlist(lapply(net, function(x) network::get.vertex.attribute(x, 'vertex.names'))))
-    }
+    vertices <- unique(unlist(lapply(net, function(x) network::get.vertex.attribute(x, 'vertex.names'))))
 
     # x = net
     add_setdiff <- function(x){
-      # Get id's for particular time slice x
       ids   <- network::get.vertex.attribute(x, 'vertex.names')
-      # See which ids are in the full list of all ids that are not in the ids for this particular network
       to_add <- setdiff(vertices,ids)
-      # Create a new vector of vertex ids that contains the ids for time slice x and then those that are not in time slice
       new_vertex_ids <- c(ids, to_add)
-      # add the "blank" vertices that are missing during this time to network x
+
       x <- network::add.vertices(x, length(to_add))
-      # rename vertices according to the vertex IDs previously calculated
       x <- network::set.vertex.attribute(x, 'vertex.names', new_vertex_ids)
+
     }
 
-    # apply the add_setdiff function across all networks
-    # if forking is allowed, mclapply, if not, lapply
     if(forking == TRUE){
       net <- parallel::mclapply(net, function(x) add_setdiff(x), mc.cores = ncpus)
     } else {
       net <- lapply(net, function(x) add_setdiff(x))
     }
+
+    vertices <- vertices[order(vertices)]
+
+    N = max(unlist(lapply(net, function(x) network::network.size(x))))
   } else {
     vertices <- unique(unlist(lapply(net, function(x) network::get.vertex.attribute(x, 'vertex.names'))))
+    vertices <- vertices[order(vertices)]
   }
 
-  # calculate number of nodes
-  N = length(vertices)
-  vertices <- vertices[order(vertices)]
-
-  # Now create network as matrix YT, either through forking or not
   if(forking == TRUE){
     YT <- parallel::mclapply(net, function(x) network::as.matrix.network(x), mc.cores = ncpus)
-  } else {
+  } else{
     YT <- lapply(net, function(x) network::as.matrix.network(x))
-  }
-
-  recode <- function(x){
-    # This is used when adding together matrices to force directed to be undirected
-    x[x == 2] <- 1
-    # reorder matrix by name, preserving order
-    x <- x[order(colnames(x)),order(colnames(x))]
-    return(x)
-  }
-
-  # This is used to force all networks to be either undirected or directed.
-  if(directed == FALSE){
-    if(forking == TRUE){
-      YT2 <- parallel::mclapply(YT, function(x) x+t(x), mc.cores = ncpus)
-      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
-    } else {
-      YT2 <- lapply(YT, function(x) x+t(x))
-      YT2 <- lapply(YT2, function(x) recode(x))
-    }
-  } else {
-    YT2 <- YT
-    if(forking == TRUE){
-      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
-    } else {
-      YT2 <- lapply(YT2, function(x) recode(x))
-    }
-  }
-
-  # rewrite the original network objects to make sure they're all directed as they're supposed to be
-  if(forking == TRUE){
-    net2 <- parallel::mclapply(YT2, function(x) network::network(x, directed = directed), mc.cores = ncpus)
-  } else {
-    net2 <- lapply(YT2, function(x) network::network(x, directed = directed)) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
   }
 
   ### find each ego-network; use K steps out from each node
   # use Y+t(Y) to jump backwards across links at the second step out
+
+  if(directed == FALSE){
+    YT2 <- lapply(YT, function(x) x+t(x))
+    recode <- function(x){
+      x[x == 2] <- 1
+      x <- x[order(colnames(x)),order(colnames(x))]
+      return(x)
+    }
+    if(forking == TRUE){
+      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
+    } else {
+      YT2 <- lapply(YT2, function(x) recode(x))
+    }
+  }
+
+  if(directed == TRUE){
+    YT2 <- YT
+    recode <- function(x){
+      x[x == 2] <- 1
+      x <- x[order(colnames(x)),order(colnames(x))]
+      return(x)
+    }
+    if(forking == TRUE){
+      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
+    } else{
+      YT2 <- lapply(YT2, function(x) recode(x))
+    }
+  }
+
   neighborhood_extract <- function(x){
     net_x <- sna::gapply(x,c(1,2),1:N,"*",1,distance=core_size)
   }
 
-  #This chunk returns a vector obtained by applying a function to vertex neighborhoods in a certain order. Here, this has the net2 object as the input graph, the margin of x to be used in calculating the network so that it is includin both rows and columns (total) = that's the second object in this function.
-  #This does it for all nodes 1 through N, applying the star function with a maximum distance of K in which neighborhoods are taken.
+
+  # reorder matrix by name, preserving order
   if(forking == TRUE){
-    xt <- parallel::mclapply(net2, function(x) neighborhood_extract(x), mc.cores = ncpus)
+    net2 <- parallel::mclapply(YT2, function(x) network::network(x, directed = directed), mc.cores = ncpus) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
+    xt<-parallel::mclapply(net2, function(x) neighborhood_extract(x), mc.cores = ncpus)
   } else {
-    xt <- lapply(net2, function(x) neighborhood_extract(x))
+    net2 <- lapply(YT2, function(x) network::network(x, directed = directed)) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
+    xt<-lapply(net2, function(x) neighborhood_extract(x))
   }
 
   #The following for loop says for every node. apply a function over the list of vectors. I think this is just a way to change the matrix into a more readable x,y form
@@ -282,36 +287,36 @@ ego_tergm <- function(net = NULL,
     #if(network::network.size(red_net) != 0){
     #  for(att in network::list.vertex.attributes(time_slice)){
     #
-     #   vals <- network::get.vertex.attribute(time_slice,att)
+    #   vals <- network::get.vertex.attribute(time_slice,att)
     #    names(vals) <- network::get.vertex.attribute(time_slice, 'vertex.names')
 
-#        to_match <- network::get.vertex.attribute(red_net, 'vertex.names')
- #       red_vals <- vals[to_match]
+    #        to_match <- network::get.vertex.attribute(red_net, 'vertex.names')
+    #       red_vals <- vals[to_match]
 
-#        network::set.vertex.attribute(red_net,att,red_vals)
-#      }
-#      if(edge_covariates == TRUE){
-#        for(att_e in setdiff(network::list.network.attributes(time_slice), c("bipartite", "directed", "hyper", "loops", "mnext", "multiple", "n"))){
-#          # setting edge attributes harder given how they're stored
-#          if(att_e != "na"){
-#            adj <- as.matrix(time_slice, matrix.type = "adjacency")
-#            adj <- adj[order(as.integer(colnames(adj))),order(as.integer(colnames(adj)))]
-#
-#            net_att <- network::get.network.attribute(time_slice, att_e)
-#
-#            colnames(net_att) <- get.vertex.attribute(orig_nets[[t]], 'vertex.names')
-#            rownames(net_att) <- get.vertex.attribute(orig_nets[[t]], 'vertex.names')
+    #        network::set.vertex.attribute(red_net,att,red_vals)
+    #      }
+    #      if(edge_covariates == TRUE){
+    #        for(att_e in setdiff(network::list.network.attributes(time_slice), c("bipartite", "directed", "hyper", "loops", "mnext", "multiple", "n"))){
+    #          # setting edge attributes harder given how they're stored
+    #          if(att_e != "na"){
+    #            adj <- as.matrix(time_slice, matrix.type = "adjacency")
+    #            adj <- adj[order(as.integer(colnames(adj))),order(as.integer(colnames(adj)))]
+    #
+    #            net_att <- network::get.network.attribute(time_slice, att_e)
+    #
+    #            colnames(net_att) <- get.vertex.attribute(orig_nets[[t]], 'vertex.names')
+    #            rownames(net_att) <- get.vertex.attribute(orig_nets[[t]], 'vertex.names')
 
-#            adj_red <- as.matrix(red_net, matrix.type = "adjacency")
-#            vertices_red <- rownames(adj_red)
-#            net_red <- net_att[vertices_red, vertices_red]
-#
-#            network::set.network.attribute(red_net,att_e,net_red)
-#
- #         }
-#        }
-  #    }
-#    }
+    #            adj_red <- as.matrix(red_net, matrix.type = "adjacency")
+    #            vertices_red <- rownames(adj_red)
+    #            net_red <- net_att[vertices_red, vertices_red]
+    #
+    #            network::set.network.attribute(red_net,att_e,net_red)
+    #
+    #         }
+    #        }
+    #    }
+    #    }
     red_net_list[[t]] <- red_net
   }
   reduced_networks <- red_net_list
@@ -459,8 +464,8 @@ ego_tergm <- function(net = NULL,
 
   # Variation on Leifeld's btergm function to overcome errors from separation.
   createBtergm_local <-function(coef, boot, R, nobs, time.steps, formula, formula2,
-            response, effects, weights, auto.adjust, offset, directed,
-            bipartite, nvertices, data){
+                                response, effects, weights, auto.adjust, offset, directed,
+                                bipartite, nvertices, data){
     new("btergm", coef = coef, boot = boot, R = R, nobs = nobs,
         time.steps = time.steps, formula = formula, formula2 = formula2,
         response = response, effects = effects, weights = weights,
@@ -773,7 +778,7 @@ ego_tergm <- function(net = NULL,
         }
 
         timecov <- function(covariate, minimum = 1, maximum = length(covariate),
-                             transform = function(t) 1 + (0 * t) + (0 * t^2), onlytime = FALSE)
+                            transform = function(t) 1 + (0 * t) + (0 * t^2), onlytime = FALSE)
         {
           if (class(covariate) != "list") {
             stop("'covariate' must be a list of matrices or network objects.")
@@ -1259,8 +1264,8 @@ ego_tergm <- function(net = NULL,
   }
 
   btergm_local <- function(formula, R = 500, offset = FALSE, returndata = FALSE,
-                            parallel = c("no", "multicore", "snow"), ncpus = 1, cl = NULL,
-                            verbose = TRUE, ...){
+                           parallel = c("no", "multicore", "snow"), ncpus = 1, cl = NULL,
+                           verbose = TRUE, ...){
     l <- tergmprepare_local(formula = formula, offset = offset, verbose = verbose)
     for (i in 1:length(l$covnames)) {
       assign(l$covnames[i], l[[l$covnames[i]]])
@@ -1401,13 +1406,15 @@ ego_tergm <- function(net = NULL,
     }
     data$offsmat <- l$offsmat
     btergm.object <- createBtergm_local(startval, coefs, R, nobs, l$time.steps,
-                                           formula, l$form, Y, x, W, l$auto.adjust, offset, l$directed,
-                                           l$bipartite, nvertices = l$nvertices, data)
+                                        formula, l$form, Y, x, W, l$auto.adjust, offset, l$directed,
+                                        l$bipartite, nvertices = l$nvertices, data)
     if (verbose == TRUE) {
       message("Done.")
     }
     return(btergm.object)
   }
+
+
 
   ########################################################################
   ### Initialization functions
@@ -1560,7 +1567,6 @@ ego_tergm <- function(net = NULL,
     TS.EE.BIC<- 2*LL - (2*roles*Nterms+roles-1)*log(N*time_steps)
     return(list(EE.BIC=CS.EE.BIC, TS.EE.BIC=TS.EE.BIC, theta=group.theta, lambda=lambda, roles=roles))
   }
-
   LOWESTLL=-1e8
 
   cat("EM algorithm starting.", "\n")
@@ -1571,28 +1577,41 @@ ego_tergm <- function(net = NULL,
   EE.BIC<-out$EE.BIC
   TS.BIC <- out$TS.EE.BIC
   z<-apply(lambda, 1, which.max)
-  roles_out <- data.frame(Id = remaining_vertices,
+  comparison_roles_out <- data.frame(Id = remaining_vertices,
                           Role = z)
 
-  cat("EM algorithm completed.", "\n")
+  # comparison
+
+  if(length(ego_tergm_fit$role_assignments$Role) == length(comparison_roles_out$Role)){
+    cross_tab <- table(ego_tergm_fit$role_assignments$Role, comparison_roles_out$Role)
+    rownames(cross_tab) <- paste0("Original Cluster: ", 1:nrow(cross_tab))
+    colnames(cross_tab) <- paste0("Subset Cluster: ", 1:nrow(cross_tab))
+
+  } else {
+    cat("Note: Comparison sets incompatible.  There are nodes in the original model output that are not in the comparison model output,
+        or there are nodes in the comparison model output that are not in the original model output.
+        Cross-tabulation table unavailable, relying instead on comparison of proportions.
+        Note that due to label switching, here groups are sorted according to value and compared according to similarity in proportions.", "\n")
+    cross_tab <- rbind(unname(sort(prop.table(table(ego_tergm_fit$role_assignments$Role)))),
+                       unname(sort(prop.table(table(comparison_roles_out$Role)))))
+
+    rownames(cross_tab) <- c("Original Assignment Proportions", "Subset Assignment Proportions")
+
+    colnames(cross_tab) <- paste0("Cluster ", 1:ncol(cross_tab))
+
+  }
+
   cat("Done.", "\n")
   cat("Completed Time:", format(Sys.time(), "%a %b %d %X %Y"), "\n")
-  return(list(model.fit = "egoTERGM",
-              net = orig_nets,
-              lambda = lambda,
-              core_size = core_size,
-              min_size = min_size,
-              roles = roles,
-              add_drop = add_drop,
-              directed = directed,
-              edge_covariates = edge_covariates,
-              group.theta = group.theta,
-              EE.BIC = EE.BIC,
-              TS.BIC = TS.BIC,
-              role_assignments = roles_out,
-              reduced_networks = reduced_networks,
-              form = form,
-              ego_nets = x,
-              ego_nets_used = keep_mat))
+  return(list(model.fit = "egoTERGM Comparison",
+              splitting_probability = splitting_probability,
+              networks_sampled = which(sample_indices == 1),
+              comparison_lambda = lambda,
+              comparison_group.theta = group.theta,
+              comparison_EE.BIC = EE.BIC,
+              comparison_TS.BIC = TS.BIC,
+              comparison_role_assignments = comparison_roles_out,
+              comparison_ego_nets = x,
+              comparison_table = cross_tab))
 
 }

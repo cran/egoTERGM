@@ -62,7 +62,7 @@ ego_tergm_fit <- ego_tergm(net = net,
                           edge_covariates = FALSE,
                           seed = 12345,
                           R = 10,
-                          parallel = "no",
+                          forking = FALSE,
                           ncpus = 1,
                           steps = 50,
                           tol = 1e-06)
@@ -77,9 +77,9 @@ role1_btergm <- btergm(net_list[[1]] ~ edges + mutual + triangle + nodeicov('ide
 }
 \references{
 {
- Campbell, Benjamin W. (2018):
+Campbell, Benjamin W. (2018):
  Inferring Latent Roles in Longitudinal Networks.
- Forthcoming in \emph{Political Analysis}.
+ \emph{Political Analysis} 26(3): 292-311.  \url{https://doi.org/10.1017/pan.2018.20}
 
  Leifeld, Philip, Skyler J. Cranmer and Bruce A. Desmarais (2017):
  Temporal Exponential Random Graph Models with btergm: Estimation and Bootstrap Confidence Intervals.

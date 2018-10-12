@@ -6,7 +6,7 @@
 \usage{
 ego_tergm(net = NULL, form = NULL, core_size = 1, min_size = 5,
   roles = 3, add_drop = TRUE, directed = TRUE, edge_covariates = FALSE,
-  seed = 12345, R = 10, parallel = "no", ncpus = 1, steps = 50,
+  seed = 12345, R = 10, forking = FALSE, ncpus = 1, steps = 50,
   tol = 1e-06)
 }
 \arguments{
@@ -30,7 +30,7 @@ ego_tergm(net = NULL, form = NULL, core_size = 1, min_size = 5,
 
 \item{R}{The number of bootstrap replications that should be used for the estimation of a bootstrapped MPLE estimated TERGM for model initialization.  Defaults to 10.}
 
-\item{parallel}{How the BTERGM should be computed, either with parallel processing ("multicore", "snow") or no parallel processing ("no").  Defaults to no.}
+\item{forking}{If parallelization via forking should be used (TRUE) or if no parallel processing should be used (FALSE).  Currently, sockets are not supported.}
 
 \item{ncpus}{The number of CPUs that should should be used for estimation, defaults to 1.}
 
@@ -39,7 +39,7 @@ ego_tergm(net = NULL, form = NULL, core_size = 1, min_size = 5,
 \item{tol}{The difference in parameter estimates between EM iterations to determine if the algorithm has converged.  Defaults to 1e-6.}
 }
 \value{
-A list of model results, including lambda (the probability of assignments), group.theta (the roles by terms cluster centroids),
+A list of model results and input values, including net (original networks), lambda (the probability of assignments), group.theta (the roles by terms cluster centroids),
         EE.BIC (the Salter-Townshend and Murphy BIC cross-sectional BIC), TS.BIC (the Campbell BIC penalizing for time-steps),
        role_assignments (a data frame of the most likely assignments), reduced_networks (A list of the networks with excluded egos),
        ego_nets (a list of ego-networks), and ego_nets_used (N x T matrix of logicals here TRUE refers to ego-networks kept).
@@ -94,7 +94,7 @@ ego_tergm_fit <- ego_tergm(net = net,
                           edge_covariates = FALSE,
                           seed = 12345,
                           R = 10,
-                          parallel = "no",
+                          forking = FALSE,
                           ncpus = 1,
                           steps = 50,
                           tol = 1e-06)
@@ -104,7 +104,7 @@ ego_tergm_fit <- ego_tergm(net = net,
 {
  Campbell, Benjamin W. (2018):
  Inferring Latent Roles in Longitudinal Networks.
- Forthcoming in \emph{Political Analysis}.
+ \emph{Political Analysis} 26(3): 292-311.  \url{https://doi.org/10.1017/pan.2018.20}
 
  Leifeld, Philip, Skyler J. Cranmer and Bruce A. Desmarais (2017):
  Temporal Exponential Random Graph Models with btergm: Estimation and Bootstrap Confidence Intervals.

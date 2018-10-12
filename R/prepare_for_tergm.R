@@ -4,9 +4,9 @@
 #' @param ego_tergm_fit The output of an ego-TERGM call.
 #' @return A list of length G containing pooled cluster assignments.  First-level elements of this list may be fed to a btergm call.
 #' @references{
-#'  Campbell, Benjamin W. (2018):
+#' Campbell, Benjamin W. (2018):
 #'  Inferring Latent Roles in Longitudinal Networks.
-#'  Forthcoming in \emph{Political Analysis}.
+#'  \emph{Political Analysis} 26(3): 292-311.  \url{https://doi.org/10.1017/pan.2018.20}
 #'
 #'  Leifeld, Philip, Skyler J. Cranmer and Bruce A. Desmarais (2017):
 #'  Temporal Exponential Random Graph Models with btergm: Estimation and Bootstrap Confidence Intervals.
@@ -59,7 +59,7 @@
 #'                           edge_covariates = FALSE,
 #'                           seed = 12345,
 #'                           R = 10,
-#'                           parallel = "no",
+#'                           forking = FALSE,
 #'                           ncpus = 1,
 #'                           steps = 50,
 #'                           tol = 1e-06)
