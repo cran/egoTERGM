@@ -82,7 +82,7 @@ sim_egonets <- function(form = NULL, params = NULL, roles = NULL, N_per_role = N
   }
 
   if(forking == TRUE){
-    sim.K <- parallel::mclapply(seq_along(sim.K), sim_egos, mc.cores = ncpus)
+    sim.K <- parallel::mclapply(seq_along(sim.K), sim_egos, mc.cores = ncpus, mc.preschedule = FALSE)
   } else {
     sim.K <- lapply(seq_along(sim.K), sim_egos)
   }
@@ -159,12 +159,13 @@ sim_egonets <- function(form = NULL, params = NULL, roles = NULL, N_per_role = N
         return(list(fit))
       }
       if(forking == TRUE){
-        theta <- parallel::mclapply(seq_along(x), function(i) fit_btergm_local(i, form = form), mc.cores = ncpus)
+        theta <- parallel::mclapply(seq_along(x), function(i) fit_btergm_local(i, form = form), mc.cores = ncpus, mc.preschedule = FALSE)
       } else {
         theta <- lapply(seq_along(x), function(i) fit_btergm_local(i, form = form))
       }
 
       theta<- do.call(rbind, unlist(theta, recursive = FALSE))
+      theta <- apply(theta, 2, as.numeric)
       # next couple of lines very ad-hoc but not an issue post EM convergence.
       theta[is.na(theta)]<-0
       theta[theta==-Inf]<- -1e6
@@ -219,7 +220,7 @@ sim_egonets <- function(form = NULL, params = NULL, roles = NULL, N_per_role = N
   ergmformula <- paste("~", paste(form,collapse="+"),sep="") # Establish function ergm formula that includes the ego.terms object
 
   if(forking == TRUE){
-    obs.S <- parallel::mclapply(seq_along(x), calculate_change_stats, mc.cores = ncpus)
+    obs.S <- parallel::mclapply(seq_along(x), calculate_change_stats, mc.cores = ncpus, mc.preschedule = FALSE)
   } else {
     obs.S <- lapply(seq_along(x), calculate_change_stats)
   }

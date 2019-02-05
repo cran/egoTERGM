@@ -10,9 +10,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<meta name="author" content="Benjamin W. Campbell" />
+<meta name="author" content="Benjamin W. Campbell, The Ohio State University" />
 
-<meta name="date" content="2018-10-12" />
+<meta name="date" content="2019-02-05" />
 
 <title>Knecht Vignette</title>
 
@@ -277,14 +277,14 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 
 <h1 class="title toc-ignore">Knecht Vignette</h1>
-<h4 class="author"><em>Benjamin W. Campbell</em></h4>
-<h4 class="date"><em>2018-10-12</em></h4>
+<h4 class="author"><em>Benjamin W. Campbell, The Ohio State University</em></h4>
+<h4 class="date"><em>2019-02-05</em></h4>
 
 
 
 <div id="vignette-info-and-introduction" class="section level2">
 <h2>Vignette Info and Introduction</h2>
-<p>This vignette uses the <code>Knecht</code> data from Knecht (2006) and Knecht (2008) to provide an illustrative example of estimating an ego-Temporal Exponential Random Graph Model (ego-TERGM) using the <code>egoTERGM</code> package <span class="citation">(Knecht 2006, <span class="citation">@knecht2008friendship</span>)</span>. It begins by estimating an ego-TERGM on the Knecht friendship network, a network of 26 students in a Dutch classroom measured across four time-periods. In addition to data on the friendships between students there is nodal attribute data on a variety of demographic and behavioral factors. For a detailed explanation of the data, I refer the reader to the original publications on the data or to the <code>xergm.common</code> help page for the <code>knecht</code> data: <code>??knecht</code>.</p>
+<p>This vignette uses the <code>Knecht</code> data from Knecht (2006) and Knecht (2008) to provide an illustrative example of estimating an ego-Temporal Exponential Random Graph Model (ego-TERGM) using the <code>egoTERGM</code> package <span class="citation">(Knecht 2006)</span>. It begins by estimating an ego-TERGM on the Knecht friendship network, a network of 26 students in a Dutch classroom measured across four time-periods. In addition to data on the friendships between students there is nodal attribute data on a variety of demographic and behavioral factors. For a detailed explanation of the data, I refer the reader to the original publications on the data or to the <code>xergm.common</code> help page for the <code>knecht</code> data: <code>??knecht</code>.</p>
 <p>Much of the code for estimating the ego-TERGM is a modification of code originally produced for its cross-sectional equivalent <span class="citation">(Salter-Townshend and Brendan Murphy 2015)</span>. This vignette will proceed step-by-step in presenting the typical workflow for estimating and interpreting an ego-TERGM using <code>egoTERGM</code>.</p>
 <p><em>Note: The code presented here is not built given the runtime for the ego-TERGM presented here. As such, the code presented is purely illustrative. It will successfully run, however.</em></p>
 </div>
@@ -349,19 +349,20 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 </ul>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">library</span>(egoTERGM)</a>
 <a class="sourceLine" id="cb2-2" data-line-number="2">ego_tergm_fit &lt;-<span class="st"> </span><span class="kw">ego_tergm</span>(<span class="dt">net =</span> net,</a>
-<a class="sourceLine" id="cb2-3" data-line-number="3">                           <span class="dt">form =</span> <span class="kw">c</span>(<span class="st">&quot;edges&quot;</span>, <span class="st">&quot;mutual&quot;</span>, <span class="st">&quot;triangle&quot;</span>, <span class="st">&quot;nodeicov(&#39;idegsqrt&#39;)&quot;</span>, <span class="st">&quot;nodeocov(&#39;odegsqrt&#39;)&quot;</span>,  <span class="st">&quot;nodematch(&#39;sex&#39;)&quot;</span>),</a>
-<a class="sourceLine" id="cb2-4" data-line-number="4">                           <span class="dt">core_size =</span> <span class="dv">1</span>,</a>
-<a class="sourceLine" id="cb2-5" data-line-number="5">                           <span class="dt">min_size =</span> <span class="dv">5</span>,</a>
-<a class="sourceLine" id="cb2-6" data-line-number="6">                           <span class="dt">roles =</span> <span class="dv">3</span>,</a>
-<a class="sourceLine" id="cb2-7" data-line-number="7">                           <span class="dt">add_drop =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb2-8" data-line-number="8">                           <span class="dt">directed =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb2-9" data-line-number="9">                           <span class="dt">edge_covariates =</span> <span class="ot">FALSE</span>,</a>
-<a class="sourceLine" id="cb2-10" data-line-number="10">                           <span class="dt">seed =</span> <span class="dv">12345</span>,</a>
-<a class="sourceLine" id="cb2-11" data-line-number="11">                           <span class="dt">R =</span> <span class="dv">10</span>,</a>
-<a class="sourceLine" id="cb2-12" data-line-number="12">                           <span class="dt">forking =</span> <span class="ot">FALSE</span>,</a>
-<a class="sourceLine" id="cb2-13" data-line-number="13">                           <span class="dt">ncpus =</span> <span class="dv">1</span>,</a>
-<a class="sourceLine" id="cb2-14" data-line-number="14">                           <span class="dt">steps =</span> <span class="dv">50</span>,</a>
-<a class="sourceLine" id="cb2-15" data-line-number="15">                           <span class="dt">tol =</span> <span class="fl">1e-06</span>)</a></code></pre></div>
+<a class="sourceLine" id="cb2-3" data-line-number="3">                           <span class="dt">form =</span> <span class="kw">c</span>(<span class="st">&quot;edges&quot;</span>, <span class="st">&quot;mutual&quot;</span>, <span class="st">&quot;triangle&quot;</span>, <span class="st">&quot;nodeicov('idegsqrt')&quot;</span>, </a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">                                    <span class="st">&quot;nodeocov('odegsqrt')&quot;</span>,  <span class="st">&quot;nodematch('sex')&quot;</span>),</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">                           <span class="dt">core_size =</span> <span class="dv">1</span>,</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">                           <span class="dt">min_size =</span> <span class="dv">5</span>,</a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">                           <span class="dt">roles =</span> <span class="dv">3</span>,</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8">                           <span class="dt">add_drop =</span> <span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">                           <span class="dt">directed =</span> <span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb2-10" data-line-number="10">                           <span class="dt">edge_covariates =</span> <span class="ot">FALSE</span>,</a>
+<a class="sourceLine" id="cb2-11" data-line-number="11">                           <span class="dt">seed =</span> <span class="dv">12345</span>,</a>
+<a class="sourceLine" id="cb2-12" data-line-number="12">                           <span class="dt">R =</span> <span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">                           <span class="dt">forking =</span> <span class="ot">FALSE</span>,</a>
+<a class="sourceLine" id="cb2-14" data-line-number="14">                           <span class="dt">ncpus =</span> <span class="dv">1</span>,</a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">                           <span class="dt">steps =</span> <span class="dv">50</span>,</a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">                           <span class="dt">tol =</span> <span class="fl">1e-06</span>)</a></code></pre></div>
 </div>
 <div id="interpreting-ego-tergm-output" class="section level2">
 <h2>Interpreting ego-TERGM Output</h2>
@@ -376,10 +377,14 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <p>To assist in interpreting the role generative structure of role assignments, I have included a simple function, <code>prepare_for_tergm</code>, that takes the output of an <code>ego_tergm</code> call and transforms it into a format that can be used by the <code>btergm</code> function <span class="citation">(Leifeld, Cranmer, and Desmarais 2017)</span>. The code for this is as follows:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">net_list &lt;-<span class="st"> </span><span class="kw">prepare_for_tergm</span>(<span class="dt">ego_tergm_fit =</span> ego_tergm_fit)</a>
 <a class="sourceLine" id="cb4-2" data-line-number="2"></a>
-<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="co"># Indexing of the output for prepare_for_tergm refers to the role numbering from initial ego_tergm_fit</span></a>
-<a class="sourceLine" id="cb4-4" data-line-number="4">role1_btergm &lt;-<span class="st"> </span><span class="kw">btergm</span>(net_list[[<span class="dv">1</span>]] <span class="op">~</span><span class="st"> </span>edges <span class="op">+</span><span class="st"> </span>mutual <span class="op">+</span><span class="st"> </span>triangle <span class="op">+</span><span class="st"> </span><span class="kw">nodeicov</span>(<span class="st">&#39;idegsqrt&#39;</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="st">                                        </span><span class="kw">nodeocov</span>(<span class="st">&#39;odegsqrt&#39;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">nodematch</span>(<span class="st">&#39;sex&#39;</span>),</a>
-<a class="sourceLine" id="cb4-6" data-line-number="6">                        <span class="dt">R =</span> <span class="dv">500</span>)</a></code></pre></div>
+<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="co"># Indexing of the output for prepare_for_tergm refers to the </span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="co"># role numbering from initial ego_tergm_fit</span></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">role1_btergm &lt;-<span class="st"> </span><span class="kw">btergm</span>(net_list[[<span class="dv">1</span>]] <span class="op">~</span><span class="st"> </span>edges <span class="op">+</span><span class="st"> </span>mutual <span class="op">+</span><span class="st"> </span>triangle <span class="op">+</span><span class="st"> </span><span class="kw">nodeicov</span>(<span class="st">'idegsqrt'</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="st">                                        </span><span class="kw">nodeocov</span>(<span class="st">'odegsqrt'</span>) <span class="op">+</span><span class="st"> </span><span class="kw">nodematch</span>(<span class="st">'sex'</span>),</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">                        <span class="dt">R =</span> <span class="dv">500</span>)</a>
+<a class="sourceLine" id="cb4-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="co"># You could then continue this for all remaining network sets</span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10"><span class="co"># in net_list</span></a></code></pre></div>
 </div>
 <div id="references" class="section level1 unnumbered">
 <h1>References</h1>
@@ -390,9 +395,6 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <div id="ref-knecht2006networks">
 <p>Knecht, Andrea. 2006. “Networks and Actor Attributes in Early Adolescence.” <em>ICS Codebook</em> 61.</p>
 </div>
-<div id="ref-knecht2008friendship">
-<p>Knecht, Andrea B. 2008. <em>Friendship Selection and Friends’ Influence. Dynamics of Networks and Actor Attributes in Early Adolescence</em>. Utrecht University.</p>
-</div>
 <div id="ref-leifeld2014xergm">
 <p>Leifeld, Philip, Skyler J Cranmer, and Bruce A Desmarais. 2014. “Xergm: Extensions of Exponential Random Graph Models.” <em>R Package Version 0.51</em>.</p>
 </div>
@@ -400,7 +402,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <p>———. 2017. “Temporal Exponential Random Graph Models with Btergm: Estimation and Bootstrap Confidence Intervals.” <em>Journal of Statistical Software</em>. Foundation for Open Access Statistics.</p>
 </div>
 <div id="ref-salter2015role">
-<p>Salter-Townshend, Michael, and Thomas Brendan Murphy. 2015. “Role Analysis in Networks Using Mixtures of Exponential Random Graph Models.” <em>Journal of Computational and Graphical Statistics</em> 24 (2). Taylor &amp;amp; Francis: 520–38.</p>
+<p>Salter-Townshend, Michael, and Thomas Brendan Murphy. 2015. “Role Analysis in Networks Using Mixtures of Exponential Random Graph Models.” <em>Journal of Computational and Graphical Statistics</em> 24 (2). Taylor; Francis: 520–38.</p>
 </div>
 </div>
 </div>

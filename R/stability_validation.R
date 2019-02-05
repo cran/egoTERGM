@@ -139,7 +139,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
     }
 
     if(forking == TRUE){
-      net <- parallel::mclapply(net, function(x) add_setdiff(x), mc.cores = ncpus)
+      net <- parallel::mclapply(net, function(x) add_setdiff(x), mc.cores = ncpus, mc.preschedule = FALSE)
     } else {
       net <- lapply(net, function(x) add_setdiff(x))
     }
@@ -153,7 +153,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
   }
 
   if(forking == TRUE){
-    YT <- parallel::mclapply(net, function(x) network::as.matrix.network(x), mc.cores = ncpus)
+    YT <- parallel::mclapply(net, function(x) network::as.matrix.network(x), mc.cores = ncpus, mc.preschedule = FALSE)
   } else{
     YT <- lapply(net, function(x) network::as.matrix.network(x))
   }
@@ -169,7 +169,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
       return(x)
     }
     if(forking == TRUE){
-      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
+      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus, mc.preschedule = FALSE)
     } else {
       YT2 <- lapply(YT2, function(x) recode(x))
     }
@@ -183,7 +183,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
       return(x)
     }
     if(forking == TRUE){
-      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus)
+      YT2 <- parallel::mclapply(YT2, function(x) recode(x), mc.cores = ncpus, mc.preschedule = FALSE)
     } else{
       YT2 <- lapply(YT2, function(x) recode(x))
     }
@@ -196,8 +196,8 @@ stability_validation <- function(ego_tergm_fit = NULL,
 
   # reorder matrix by name, preserving order
   if(forking == TRUE){
-    net2 <- parallel::mclapply(YT2, function(x) network::network(x, directed = directed), mc.cores = ncpus) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
-    xt<-parallel::mclapply(net2, function(x) neighborhood_extract(x), mc.cores = ncpus)
+    net2 <- parallel::mclapply(YT2, function(x) network::network(x, directed = directed), mc.cores = ncpus, mc.preschedule = FALSE) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
+    xt<-parallel::mclapply(net2, function(x) neighborhood_extract(x), mc.cores = ncpus, mc.preschedule = FALSE)
   } else {
     net2 <- lapply(YT2, function(x) network::network(x, directed = directed)) #network object based upon the network matrix y which takes y and transforms it by	causing nodes to "jump backwards across links at the second step"
     xt<-lapply(net2, function(x) neighborhood_extract(x))
@@ -221,9 +221,9 @@ stability_validation <- function(ego_tergm_fit = NULL,
     # loop over each node from time_period's list of node-based neighborhoods and reduce the
     # broader adjacency matrix Y to the ego-network's adjacency matrix and save that in n
     if(forking == TRUE){
-      x<-parallel::mclapply(seq_along(time_period), reduce_adjacency, mc.cores = ncpus)
+      x<-parallel::mclapply(seq_along(time_period), reduce_adjacency, mc.cores = ncpus, mc.preschedule = FALSE)
       # make all the adjacency matrices into network objects
-      x<-parallel::mclapply(x, function(x) network::as.network.matrix(x, directed=directed), mc.cores = ncpus)
+      x<-parallel::mclapply(x, function(x) network::as.network.matrix(x, directed=directed), mc.cores = ncpus, mc.preschedule = FALSE)
     } else {
       x<-lapply(seq_along(time_period), reduce_adjacency)
       x<-lapply(x, function(x) network::as.network.matrix(x, directed=directed))
@@ -236,14 +236,16 @@ stability_validation <- function(ego_tergm_fit = NULL,
   rearrange_format <- function(i){
     time_list <- list()
     for(ti in 1:time_steps){
-      nit <- xt[[ti]][[i]]
-      time_list[[ti]] <- nit
+      if(length(xt[[ti]]) != 0){
+        nit <- xt[[ti]][[i]]
+        time_list[[ti]] <- nit
+      }
     }
     return(time_list)
   }
 
   if(forking == TRUE){
-    xt <- parallel::mclapply(as.list(1:N), rearrange_format, mc.cores =2)
+    xt <- parallel::mclapply(as.list(1:N), rearrange_format, mc.cores =ncpus, mc.preschedule = FALSE)
   } else {
     xt <- lapply(as.list(1:N), rearrange_format)
   }
@@ -256,8 +258,13 @@ stability_validation <- function(ego_tergm_fit = NULL,
   # create function that evaluates the size of each ego-network and determine if they're large enough to be included
   for(i in 1:length(xt)){
     ego <- xt[[i]]
+    keep_vec <- rep(FALSE, times = length(ego))
+    net_indices <- which(unlist(lapply(ego, class) == "network")==TRUE)
+    non_net_indices <- which(unlist(lapply(ego, class) == "network")==FALSE)
+    ego <- ego[net_indices]
     keep <- lapply(ego, network::network.size)>=min_size
-    keep_mat[i,] <- keep
+    keep_vec[net_indices] <- keep
+    keep_mat[i,] <- keep_vec
   }
 
   # Unname the list
@@ -280,7 +287,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
     if(is.null(nrow(red_net[keep_mat[,t],keep_mat[,t]])) || nrow(red_net[keep_mat[,t],keep_mat[,t]]) == 0){
       red_net <- NA
     } else {
-      red_net <- network::delete.vertices(x = time_slice, vid = which(get.vertex.attribute(time_slice, 'vertex.names') %in% get.vertex.attribute(time_slice, 'vertex.names')[keep_mat[,t]==FALSE]))
+      red_net <- network::delete.vertices(x = time_slice, vid = which(network::get.vertex.attribute(time_slice, 'vertex.names') %in% network::get.vertex.attribute(time_slice, 'vertex.names')[keep_mat[,t]==FALSE]))
     }
 
     # If the reduced network is of size zero
@@ -399,7 +406,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
   }
 
   if(forking == TRUE){
-    xt <- parallel::mclapply(seq_along(orig_xt), populate_attributes, mc.cores = ncpus)
+    xt <- parallel::mclapply(seq_along(orig_xt), populate_attributes, mc.cores = ncpus, mc.preschedule = FALSE)
   } else {
     xt <- lapply(seq_along(orig_xt), populate_attributes)
   }
@@ -1442,12 +1449,14 @@ stability_validation <- function(ego_tergm_fit = NULL,
         return(list(fit))
       }
       if(forking == TRUE){
-        theta <- parallel::mclapply(seq_along(x), function(i) fit_btergm_local(i, form = form), mc.cores = ncpus)
+        theta <- parallel::mclapply(seq_along(x), function(i) fit_btergm_local(i, form = form), mc.cores = ncpus, mc.preschedule = FALSE)
       } else {
         theta <- lapply(seq_along(x), function(i) fit_btergm_local(i, form = form))
       }
 
       theta<- do.call(rbind, unlist(theta, recursive = FALSE))
+      # recode to numeric (makes any errors into na)
+      theta <- apply(theta, 2, as.numeric)
       # next couple of lines very ad-hoc but not an issue post EM convergence.
       theta[is.na(theta)]<-0
       theta[theta==-Inf]<- -1e6
@@ -1501,7 +1510,7 @@ stability_validation <- function(ego_tergm_fit = NULL,
   ergmformula <- paste("~", paste(form,collapse="+"),sep="") # Establish function ergm formula that includes the ego.terms object
 
   if(forking == TRUE){
-    obs.S <- parallel::mclapply(seq_along(x), calculate_change_stats, mc.cores = ncpus)
+    obs.S <- parallel::mclapply(seq_along(x), calculate_change_stats, mc.cores = ncpus, mc.preschedule = FALSE)
   } else {
     obs.S <- lapply(seq_along(x), calculate_change_stats)
   }

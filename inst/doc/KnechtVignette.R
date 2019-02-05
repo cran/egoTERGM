@@ -39,7 +39,8 @@
 ## ---- eval = FALSE-------------------------------------------------------
 #  library(egoTERGM)
 #  ego_tergm_fit <- ego_tergm(net = net,
-#                             form = c("edges", "mutual", "triangle", "nodeicov('idegsqrt')", "nodeocov('odegsqrt')",  "nodematch('sex')"),
+#                             form = c("edges", "mutual", "triangle", "nodeicov('idegsqrt')",
+#                                      "nodeocov('odegsqrt')",  "nodematch('sex')"),
 #                             core_size = 1,
 #                             min_size = 5,
 #                             roles = 3,
@@ -64,9 +65,13 @@
 ## ---- eval = FALSE-------------------------------------------------------
 #  net_list <- prepare_for_tergm(ego_tergm_fit = ego_tergm_fit)
 #  
-#  # Indexing of the output for prepare_for_tergm refers to the role numbering from initial ego_tergm_fit
+#  # Indexing of the output for prepare_for_tergm refers to the
+#  # role numbering from initial ego_tergm_fit
 #  role1_btergm <- btergm(net_list[[1]] ~ edges + mutual + triangle + nodeicov('idegsqrt') +
 #                                          nodeocov('odegsqrt') + nodematch('sex'),
 #                          R = 500)
+#  
+#  # You could then continue this for all remaining network sets
+#  # in net_list
 #  
 
