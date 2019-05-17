@@ -1,5 +1,6 @@
-3b7f27ae0deff1e2aeaf3eafe82bef85 *DESCRIPTION
-87773b23d6bd725e6833f669ccdd3ed6 *NAMESPACE
+c1ca71bac62f48c4ada3265f0840c839 *DESCRIPTION
+b1f9f40ea354bfb44c347bfa5ac39f8b *NAMESPACE
+98e25de6fcb2a4c8e30ac162dd11c99b *NEWS.md
 7837f2c84394940aa19aad18cc8fd1be *R/ego_ergm.R
 38a1f1a3fff78ddf6341d9e0d56b731d *R/ego_tergm.R
 dacdd6518be46096400dc270e8a81c42 *R/ego_tergm_fit.R
@@ -8,11 +9,11 @@ b211a0053beca1d8076e9ad12cdd3e8e *R/plot_ego_tergm.R
 5e84b8e052d9676c2e4d4a26cf85b0bf *R/prepare_for_tergm.R
 4ba3a669237d0c7a8592dcd4eb97cf49 *R/sim_egonets.R
 b245d0c733829523f66be897b3fda5e4 *R/stability_validation.R
-fb162a4faf221b928a0812548292a6e1 *build/vignette.rds
+8182d4f8e08dcfcae541fcd3828f177c *build/vignette.rds
 20ce88601d82ca9bcba81d5d76a87e86 *data/ego_tergm_fit.rda
 e13adc2ed033b0e2446d0b1b52e97195 *inst/doc/KnechtVignette.R
 9f6c468018fd761d8e9a642a836e6277 *inst/doc/KnechtVignette.Rmd
-9a440c14ca2b789f5210bea68bbd65be *inst/doc/KnechtVignette.html
+c8f357c4144883b96ec8fde25dfc1a3c *inst/doc/KnechtVignette.html
 9636db4a9a34844cd5106162d351d905 *man/ego_ergm.Rd
 fb3f04ea41c48f1806e04ee1976150a6 *man/ego_tergm.Rd
 d47e412afcd177cadd6d50bfd2fc13d5 *man/ego_tergm_fit.Rd
